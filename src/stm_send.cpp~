@@ -1,0 +1,98 @@
+#include <ros/ros.h> 
+#include <serial/serial.h>  //ROS已经内置了的串口包 
+#include <std_msgs/String.h> 
+#include "smart_car/stmdata.h"  //包名，msg文件名
+#include "data_deal.h"    //数据处理头文件
+serial::Serial ser; //声明串口对象
+#define bufflen 34
+//定义全局变量
+float senddata[2];
+char sendbuff[15];
+float recvdata[4];
+char recvbuff[30];
+
+void sendCallback(const smart_car::stmdata::ConstPtr& stmsend)
+{
+	//数组里按顺序分别为speed,steer
+	senddata[0] = stmsend->left_speed;
+	senddata[1] = stmsend->right_speed;
+	ROS_INFO("left_speed:%.2lf",senddata[0]);
+	ROS_INFO("right_speed:%.2lf",senddata[1]);
+	combine(sendbuff,",",senddata,2);   //发送数据处理
+	ser.write(sendbuff);   //发送串口数据
+}
+
+int main (int argc, char** argv) 
+{ 
+	int i,num;	
+	//初始化节点,节点名-serial_wifi_send
+	ros::init(argc, argv, "stm_control"); 
+	//声明节点句柄 
+	ros::NodeHandle n; 
+	//订阅stm32主题，并配置回调函数,该消息为上位机传给底层的控制数据 
+	ros::Subscriber stm_sub = n.subscribe("ideal_speed", 10, sendCallback); 
+	//发布主题 
+	ros::Publisher stm_pub = n.advertise<smart_car::stmdata>("Wheel_speed", 10); 
+	
+	try 
+	{ 
+		//设置串口属性，并打开串口 
+		ser.setPort("/dev/ttyUSB0"); 
+		ser.setBaudrate(115200); 
+		serial::Timeout to = serial::Timeout::simpleTimeout(1000); 
+		ser.setTimeout(to); 
+		ser.open(); 
+	 }
+	catch (serial::IOException& e) 
+	{ 
+		ROS_ERROR_STREAM("Unable to open port "); 
+		return -1; 
+	} 
+	
+	//检测串口是否已经打开，并给出提示信息 
+	if(ser.isOpen()) 
+	{ 
+		ROS_INFO_STREAM("Serial Port initialized"); 
+	} 
+	else 
+	{ 
+		return -1; 
+	}
+	//指定循环的频率 
+	ros::Rate loop_rate(10);
+	while(ros::ok()) 
+    { 
+    	//数据初始化
+    	smart_car::stmdata msg;
+    	msg.left_front = 0;
+    	msg.left_rear = 0;
+    	msg.right_front = 0;
+    	msg.right_rear = 0;
+        if(ser.available())
+        { 
+        	ROS_INFO_STREAM("Reading from serial port\n"); 
+           	ser.read(recvbuff,bufflen);
+            num = split(recvbuff,",",recvdata);
+            if(num!=4)
+            {	
+            	ROS_INFO_STREAM("Receive Error!\n"); 
+			}
+			else
+            {
+            	ROS_INFO("left_front:%f\n",recvdata[0]);
+            	ROS_INFO("left_rear:%f\n",recvdata[1]);
+            	ROS_INFO("right_front:%f\n",recvdata[2]);
+            	ROS_INFO("right_rear:%f\n",recvdata[3]);
+            	msg.left_front = recvdata[0];
+    			msg.left_rear = recvdata[1];
+    			msg.right_front = recvdata[2];
+    			msg.right_rear = recvdata[3];
+			}
+        } 
+        stm_pub.publish(msg);
+        //处理ROS的信息，比如订阅消息,并调用回调函数 
+        ros::spinOnce(); 
+        loop_rate.sleep(); 
+    }  
+	return 0;
+} 

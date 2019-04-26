@@ -1,0 +1,5 @@
+#ifndef RAZOR_DATADEAL_H_   
+#define RAZOR_DATADEAL_H_
+#include "stdlib.h"
+#include "stdio.h"
+#include <string>

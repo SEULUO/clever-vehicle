@@ -1,0 +1,23 @@
+#include "stdlib.h"
+#include "stdio.h"
+#include <string>
+
+//返回值为拆分之后数组的长度
+//databuff——字符串数据
+//def——拆分字符串，本例中为“, ”
+//data——拆分后的数据数组
+int split(char *databuff, char *def, float data[])
+{
+	int i = 0;
+	char *temp = strtok(databuff,def);
+	while(temp)
+	{
+		data[i] = atof(temp);
+		temp = strtok(NULL,def);
+		i++;
+	}
+	return i;
+}
+
+
+

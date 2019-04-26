@@ -1,0 +1,52 @@
+#include "zlpid.h"
+
+//构造函数
+zlpid::zlpid()
+{
+	error = 0.0;
+	error_last = 0.0;
+	error_previous = 0.0;
+	Kp = 0.2;
+	Ki = 0.01;
+	Kd = 0.2;
+	Target = 0.0;
+	Actual = 0.0;
+	output = 0.0;
+}
+//计算控制输出
+float zlpid::pidcontrol()
+{
+	float increment_output;
+	error = Target - Actual;  //计算误差
+	increment_output = Kp*(error - error_last) + Ki*error + Kd*(error - 2*error_last + error_previous);    //控制输出变化量计算
+	output += increment_output;  //控制量输出计算
+	error_previous = error_last;
+	error_last = error;
+	return output;
+}
+
+//设定pid参数
+void zlpid::setpid(float kp, float ki, float kd)
+{
+	Kp = kp;
+	Ki = ki;
+	Kd = kd;
+}
+
+//设定目标值
+void zlpid::settarget(float target)
+{
+	Target = target;
+} 
+
+//设定实际值
+void zlpid::setactual(float actual)
+{
+	Actual = actual;
+}
+
+//取出误差
+float zlpid::geterror()
+{
+	return(error);
+} 
